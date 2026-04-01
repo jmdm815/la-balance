@@ -1,52 +1,27 @@
-# Restaurant Ordering App
+# Customer App
 
-A simple restaurant online ordering app built with Next.js and designed for easy deployment to GitHub and Vercel.
+This is the customer ordering site.
 
-## Features
+## Logo
+The attached restaurant logo has already been added to:
+- `public/logo.svg`
 
-- Itemized menu with pricing
-- Add items to cart
-- Remove items from cart
-- Custom instructions for each item
-- Checkout with pickup options:
-  - In-store pickup
-  - Drive-through pickup
-- Simple front-end MVP for quick launch
+## Theme colors
+The UI now matches the logo colors:
+- red `#ed1c24`
+- green `#009444`
+- black `#111111`
+- white `#ffffff`
 
-## Run locally
+## Setup
+1. Install dependencies:
+   npm install
 
-```bash
-npm install
-npm run dev
-```
+2. Add your admin app URL:
+   copy `.env.example` to `.env.local`
 
-Then open `http://localhost:3000`.
+3. Set:
+   NEXT_PUBLIC_ADMIN_API_URL=https://your-admin-app.vercel.app
 
-## Deploy to GitHub and Vercel
-
-### 1. Create a GitHub repo
-Create a new empty repository on GitHub.
-
-### 2. Push this code
-```bash
-git init
-git add .
-git commit -m "Initial restaurant ordering app"
-git branch -M main
-git remote add origin YOUR_GITHUB_REPO_URL
-git push -u origin main
-```
-
-### 3. Deploy on Vercel
-- Log in to Vercel
-- Import the GitHub repository
-- Keep the default Next.js settings
-- Click Deploy
-
-## Suggested next upgrades
-
-- Save orders to a database
-- Send order confirmation emails or texts
-- Add admin dashboard for incoming orders
-- Connect payments with Stripe
-- Add restaurant branding, logo, and real menu items
+4. Run:
+   npm run dev

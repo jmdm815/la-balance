@@ -18,9 +18,9 @@ type CartItem = MenuItem & {
 const menu: MenuItem[] = [
   { id: 1, name: "Classic Burger", description: "Beef patty, lettuce, tomato, cheese", price: 10.99, category: "Mains" },
   { id: 2, name: "Chicken Sandwich", description: "Crispy chicken, pickles, house sauce", price: 9.49, category: "Mains" },
-  { id: 3, name: "Caesar Salad", description: "Romaine, parmesan, croutons", price: 8.25, category: "Mains" },
-  { id: 4, name: "Fries", description: "Golden seasoned fries", price: 3.99, category: "Sides" },
-  { id: 5, name: "Onion Rings", description: "Crispy battered onion rings", price: 4.49, category: "Sides" },
+  { id: 3, name: "Caesar Salad", description: "Romaine, parmesan, parmesan dressing", price: 8.25, category: "Mains" },
+  { id: 4, name: "Fries", description: "Seasoned fries with sea salt", price: 3.99, category: "Sides" },
+  { id: 5, name: "Onion Rings", description: "Crispy battered rings", price: 4.49, category: "Sides" },
   { id: 6, name: "Soda", description: "Choice of fountain drink", price: 2.49, category: "Drinks" },
   { id: 7, name: "Iced Tea", description: "Fresh brewed sweet or unsweet", price: 2.79, category: "Drinks" }
 ];
@@ -36,14 +36,10 @@ export default function HomePage() {
   const [pickupType, setPickupType] = useState("in-store");
   const [customerName, setCustomerName] = useState("");
   const [phone, setPhone] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  const [status, setStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
 
   const categories = Array.from(new Set(menu.map((item) => item.category)));
-
-  const subtotal = useMemo(
-    () => cart.reduce((sum, item) => sum + item.price, 0),
-    [cart]
-  );
+  const subtotal = useMemo(() => cart.reduce((sum, item) => sum + item.price, 0), [cart]);
 
   const addToCart = (item: MenuItem) => {
     const instructions = instructionsById[item.id] || "";
@@ -62,32 +58,70 @@ export default function HomePage() {
     setCart((current) => current.filter((item) => item.cartId !== cartId));
   };
 
-  const placeOrder = () => {
+  const submitOrder = async () => {
     if (!cart.length) {
-      alert("Add at least one item to the cart before checking out.");
+      alert("Add at least one item before checkout.");
       return;
     }
     if (!customerName.trim() || !phone.trim()) {
-      alert("Please add your name and phone number.");
+      alert("Please enter your name and phone number.");
       return;
     }
-    setSubmitted(true);
+
+    const apiBase = process.env.NEXT_PUBLIC_ADMIN_API_URL;
+
+    if (!apiBase) {
+      alert("Set NEXT_PUBLIC_ADMIN_API_URL in your Vercel environment or .env.local file.");
+      return;
+    }
+
+    setStatus("sending");
+
+    try {
+      const response = await fetch(`${apiBase}/api/orders`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerName,
+          phone,
+          pickupType,
+          items: cart.map((item) => ({
+            name: item.name,
+            price: item.price,
+            quantity: 1,
+            instructions: item.instructions || ""
+          }))
+        })
+      });
+
+      if (!response.ok) throw new Error("Failed to submit order.");
+
+      setCart([]);
+      setInstructionsById({});
+      setCustomerName("");
+      setPhone("");
+      setPickupType("in-store");
+      setStatus("success");
+    } catch (error) {
+      console.error(error);
+      setStatus("error");
+    }
   };
 
   return (
     <main className="page-shell">
       <section className="hero">
         <div>
-          <p className="eyebrow">Online Ordering</p>
-          <h1>Restaurant Pickup Orders</h1>
+          <p className="eyebrow">Fast, easy, colorful</p>
+          <h2>Order ahead for pickup</h2>
           <p className="hero-copy">
-            Customers can browse the menu, add custom instructions, choose pickup type,
-            and review their order before submitting.
+            Browse the menu, leave custom instructions, and choose either in-store pickup
+            or drive-through pickup.
           </p>
         </div>
         <div className="hero-card">
-          <strong>Deployment ready</strong>
-          <p>Built with Next.js so you can push to GitHub and deploy on Vercel.</p>
+          <strong>Brand matched to your logo</strong>
+          <p>Updated with your logo colors: red, green, black, and white.</p>
         </div>
       </section>
 
@@ -95,39 +129,37 @@ export default function HomePage() {
         <section>
           {categories.map((category) => (
             <div key={category} className="menu-section">
-              <h2>{category}</h2>
+              <h3>{category}</h3>
               <div className="menu-grid">
-                {menu
-                  .filter((item) => item.category === category)
-                  .map((item) => (
-                    <article key={item.id} className="menu-card">
-                      <div className="menu-card-top">
-                        <div>
-                          <h3>{item.name}</h3>
-                          <p>{item.description}</p>
-                        </div>
-                        <span className="price">${item.price.toFixed(2)}</span>
+                {menu.filter((item) => item.category === category).map((item) => (
+                  <article key={item.id} className="menu-card">
+                    <div className="menu-card-top">
+                      <div>
+                        <h4>{item.name}</h4>
+                        <p>{item.description}</p>
                       </div>
+                      <span className="price">${item.price.toFixed(2)}</span>
+                    </div>
 
-                      <label className="instructions-label">
-                        Custom instructions
-                        <textarea
-                          value={instructionsById[item.id] || ""}
-                          onChange={(event) =>
-                            setInstructionsById((current) => ({
-                              ...current,
-                              [item.id]: event.target.value
-                            }))
-                          }
-                          placeholder="No onions, extra sauce, allergy note..."
-                        />
-                      </label>
+                    <label className="field">
+                      Custom instructions
+                      <textarea
+                        value={instructionsById[item.id] || ""}
+                        onChange={(event) =>
+                          setInstructionsById((current) => ({
+                            ...current,
+                            [item.id]: event.target.value
+                          }))
+                        }
+                        placeholder="No onions, extra sauce, allergy note..."
+                      />
+                    </label>
 
-                      <button className="primary-button" onClick={() => addToCart(item)}>
-                        Add to cart
-                      </button>
-                    </article>
-                  ))}
+                    <button className="primary-button" onClick={() => addToCart(item)}>
+                      Add to cart
+                    </button>
+                  </article>
+                ))}
               </div>
             </div>
           ))}
@@ -135,28 +167,21 @@ export default function HomePage() {
 
         <aside className="sidebar">
           <div className="panel">
-            <h2>Cart</h2>
+            <h3>Your cart</h3>
             {cart.length === 0 ? (
-              <p className="empty-state">Your cart is empty.</p>
+              <p className="muted">Your cart is empty.</p>
             ) : (
               <div className="cart-list">
                 {cart.map((item) => (
                   <div key={item.cartId} className="cart-item">
-                    <div>
-                      <div className="cart-item-row">
-                        <strong>{item.name}</strong>
-                        <span>${item.price.toFixed(2)}</span>
-                      </div>
-                      {item.instructions ? (
-                        <p className="item-note">Instructions: {item.instructions}</p>
-                      ) : (
-                        <p className="item-note muted">No custom instructions</p>
-                      )}
+                    <div className="cart-item-row">
+                      <strong>{item.name}</strong>
+                      <span>${item.price.toFixed(2)}</span>
                     </div>
-                    <button
-                      className="secondary-button"
-                      onClick={() => removeFromCart(item.cartId)}
-                    >
+                    <p className="item-note">
+                      {item.instructions ? `Instructions: ${item.instructions}` : "No custom instructions"}
+                    </p>
+                    <button className="secondary-button" onClick={() => removeFromCart(item.cartId)}>
                       Remove
                     </button>
                   </div>
@@ -170,25 +195,17 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="panel">
-            <h2>Checkout</h2>
+          <div className="panel checkout-panel">
+            <h3>Checkout</h3>
 
             <label className="field">
               Name
-              <input
-                value={customerName}
-                onChange={(event) => setCustomerName(event.target.value)}
-                placeholder="Customer name"
-              />
+              <input value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Customer name" />
             </label>
 
             <label className="field">
               Phone
-              <input
-                value={phone}
-                onChange={(event) => setPhone(event.target.value)}
-                placeholder="Phone number"
-              />
+              <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone number" />
             </label>
 
             <fieldset className="pickup-group">
@@ -197,33 +214,20 @@ export default function HomePage() {
                 <label key={option.value} className="pickup-option">
                   <input
                     type="radio"
-                    name="pickupType"
-                    value={option.value}
                     checked={pickupType === option.value}
-                    onChange={(event) => setPickupType(event.target.value)}
+                    onChange={() => setPickupType(option.value)}
                   />
                   {option.label}
                 </label>
               ))}
             </fieldset>
 
-            <button className="primary-button checkout-button" onClick={placeOrder}>
-              Submit order
+            <button className="primary-button" onClick={submitOrder} disabled={status === "sending"}>
+              {status === "sending" ? "Sending order..." : "Submit order"}
             </button>
 
-            {submitted && (
-              <div className="success-box">
-                <strong>Order submitted</strong>
-                <p>
-                  Thank you, {customerName}. Your order is marked for{" "}
-                  {pickupType === "in-store" ? "in-store pickup" : "drive-through pickup"}.
-                </p>
-                <p className="muted">
-                  This MVP is front-end only. You can later connect it to email, SMS,
-                  Stripe, or a restaurant POS.
-                </p>
-              </div>
-            )}
+            {status === "success" && <p className="success-text">Order submitted successfully.</p>}
+            {status === "error" && <p className="error-text">Could not send the order. Check your admin app URL.</p>}
           </div>
         </aside>
       </div>
