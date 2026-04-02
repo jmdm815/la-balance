@@ -95,6 +95,10 @@ export default function HomePage() {
   const [hydrated, setHydrated] = useState(false);
 
   const categories = Array.from(new Set(menu.map((item) => item.category)));
+  const [openCategories, setOpenCategories] = useState<Record<string, boolean>>(
+    Object.fromEntries(categories.map((category, index) => [category, index === 0]))
+  );
+
   const subtotal = useMemo(() => cart.reduce((sum, item) => sum + item.price, 0), [cart]);
 
   useEffect(() => {
@@ -138,6 +142,10 @@ export default function HomePage() {
   const removeFromCart = (cartId: string) => {
     setCart((current) => current.filter((item) => item.cartId !== cartId));
     setStatus("idle");
+  };
+
+  const toggleCategory = (category: string) => {
+    setOpenCategories((current) => ({ ...current, [category]: !current[category] }));
   };
 
   const submitOrder = async () => {
@@ -193,51 +201,72 @@ export default function HomePage() {
           <p className="eyebrow">Menu imported</p>
           <h2>Order ahead for pickup</h2>
           <p className="hero-copy">
-            Your menu is now grouped into categories for easier browsing in the customer app.
+            Your menu is now grouped into click-to-expand categories for easier browsing.
           </p>
           <p className="memory-note">
             Cart and checkout details are remembered in the browser if a customer refreshes the page.
           </p>
         </div>
         <div className="hero-card">
-          <strong>Menu categories</strong>
-          <p>Breakfast Burritos, Savory Burritos, French Specialties, House Specialties, Quesadillas, Sides, Desserts and Beverages.</p>
+          <strong>Cleaner menu</strong>
+          <p>Tap a category to open it, then browse just those items.</p>
         </div>
       </section>
 
       <div className="content-grid">
         <section>
-          {categories.map((category) => (
-            <div key={category} className="menu-section">
-              <h3>{category}</h3>
-              <div className="menu-grid">
-                {menu.filter((item) => item.category === category).map((item) => (
-                  <article key={item.id} className="menu-card">
-                    <div className="menu-card-top">
-                      <div>
-                        <h4>{item.name}</h4>
-                        <p>{item.description}</p>
-                      </div>
-                      <span className="price">${item.price.toFixed(2)}</span>
-                    </div>
+          {categories.map((category) => {
+            const items = menu.filter((item) => item.category === category);
+            const isOpen = openCategories[category];
 
-                    <label className="field">
-                      Custom instructions
-                      <textarea
-                        value={instructionsById[item.id] || ""}
-                        onChange={(event) => setInstructionsById((current) => ({ ...current, [item.id]: event.target.value }))}
-                        placeholder="No onions, extra sauce, allergy note..."
-                      />
-                    </label>
+            return (
+              <div key={category} className="accordion-section">
+                <button
+                  type="button"
+                  className="accordion-trigger"
+                  onClick={() => toggleCategory(category)}
+                  aria-expanded={isOpen}
+                >
+                  <span>{category}</span>
+                  <span className={`accordion-icon ${isOpen ? "open" : ""}`}>+</span>
+                </button>
 
-                    <button className="primary-button" onClick={() => addToCart(item)}>
-                      Add to cart
-                    </button>
-                  </article>
-                ))}
+                {isOpen && (
+                  <div className="menu-grid">
+                    {items.map((item) => (
+                      <article key={item.id} className="menu-card">
+                        <div className="menu-card-top">
+                          <div>
+                            <h4>{item.name}</h4>
+                            <p>{item.description}</p>
+                          </div>
+                          <span className="price">${item.price.toFixed(2)}</span>
+                        </div>
+
+                        <label className="field">
+                          Custom instructions
+                          <textarea
+                            value={instructionsById[item.id] || ""}
+                            onChange={(event) =>
+                              setInstructionsById((current) => ({
+                                ...current,
+                                [item.id]: event.target.value
+                              }))
+                            }
+                            placeholder="No onions, extra sauce, allergy note..."
+                          />
+                        </label>
+
+                        <button className="primary-button" onClick={() => addToCart(item)}>
+                          Add to cart
+                        </button>
+                      </article>
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </section>
 
         <aside className="sidebar">
@@ -285,12 +314,19 @@ export default function HomePage() {
 
             <fieldset className="pickup-group">
               <legend>Pickup option</legend>
-              {pickupOptions.map((option) => (
-                <label key={option.value} className="pickup-option">
-                  <input type="radio" checked={pickupType === option.value} onChange={() => setPickupType(option.value)} />
-                  {option.label}
-                </label>
-              ))}
+              <div className="pickup-options">
+                {pickupOptions.map((option) => (
+                  <label key={option.value} className="pickup-choice">
+                    <input
+                      type="radio"
+                      name="pickupType"
+                      checked={pickupType === option.value}
+                      onChange={() => setPickupType(option.value)}
+                    />
+                    <span>{option.label}</span>
+                  </label>
+                ))}
+              </div>
             </fieldset>
 
             <button className="primary-button" onClick={submitOrder} disabled={status === "sending"}>
